@@ -62,13 +62,13 @@ export default {
     const stub = env.ROOM.get(id);
 
     // Forward verbatim. The Worker never looks inside a frame.
+    //
+    // The original `request` is forwarded unchanged: on the current runtime the
+    // `cf.websocket` pair is populated for us. The older pattern of building a
+    // second pair and assigning it to `.cf` now throws
+    // "Cannot assign to read only property 'cf' of object '#<Request>'".
     try {
-      const mutable = new Request(request);
-      (mutable as unknown as { cf: { websocket: unknown } }).cf = {
-        websocket: new WebSocketPair(),
-      } as never;
-
-      return await stub.fetch(mutable);
+      return await stub.fetch(request);
     } catch (err) {
       // TEMPORARY diagnostic: surface the exception instead of an opaque 1101.
       return new Response(`worker-forward: ${describe(err)}`, { status: 500 });
