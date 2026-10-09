@@ -1,0 +1,76 @@
+# KEA relay deploy diagnostics
+
+commit    : c8801e706395952caeb812962dd5245e0062d4a3
+when      : 2026-10-09T23:57:28Z
+deploy    : success
+subdomain : {'subdomain': 'kea-11ce16198a'}
+
+## subdomain provisioning
+GET  -> {
+  "result": {
+    "subdomain": "kea-11ce16198a"
+  },
+  "success": true,
+  "errors": [],
+  "messages": []
+}
+
+## workers.dev subdomain (authoritative, after deploy)
+{
+  "result": {
+    "subdomain": "kea-11ce16198a"
+  },
+  "success": true,
+  "errors": [],
+  "messages": []
+}
+
+## deploy stdout
+
+Cloudflare collects anonymous telemetry about your usage of Wrangler. Learn more at https://github.com/cloudflare/workers-sdk/tree/main/packages/wrangler/telemetry.md
+
+ ⛅️ wrangler 3.114.17 (update available 4.149.0)
+------------------------------------------------
+
+[33m▲ [43;33m[[43;30mWARNING[43;33m][0m [1mThe version of Wrangler you are using is now out-of-date.[0m
+
+  Please update to the latest version to prevent critical errors.
+  Run `npm install --save-dev wrangler@4` to update to the latest version.
+  After installation, run Wrangler with `npx wrangler`.
+
+
+Total Upload: 9.59 KiB / gzip: 2.99 KiB
+Your worker has access to the following bindings:
+- Durable Objects:
+  - ROOM: Room
+Uploaded kea-relay (1.45 sec)
+Deployed kea-relay triggers (0.15 sec)
+  https://kea-relay.kea-11ce16198a.workers.dev
+Current Version ID: 939c394a-79e5-46ae-9968-afa869efecb3
+
+## toolchain
+node v20.20.2
+npm 10.8.2
+wrangler 3.114.17
+
+## wrangler whoami
+
+ ⛅️ wrangler 3.114.17 (update available 4.149.0)
+------------------------------------------------
+
+[33m▲ [43;33m[[43;30mWARNING[43;33m][0m [1mThe version of Wrangler you are using is now out-of-date.[0m
+
+  Please update to the latest version to prevent critical errors.
+  Run `npm install --save-dev wrangler@4` to update to the latest version.
+  After installation, run Wrangler with `npx wrangler`.
+
+
+Getting User settings...
+ℹ️  The API Token is read from the CLOUDFLARE_API_TOKEN environment variable.
+👋 You are logged in with an User API Token, associated with the email profilname32@gmail.com.
+┌──────────────────────────────────┬──────────────────────────────────┐
+│ Account Name                     │ Account ID                       │
+├──────────────────────────────────┼──────────────────────────────────┤
+│ Profilname32@gmail.com's Account │ 11ce16198a22d5530981ea3833d6bc40 │
+└──────────────────────────────────┴──────────────────────────────────┘
+🔓 To see token permissions visit https://dash.cloudflare.com/profile/api-tokens.
