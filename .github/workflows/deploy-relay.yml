@@ -102,6 +102,73 @@ jobs:
           npx wrangler whoami 2>&1 | tee "$RUNNER_TEMP/whoami.txt"
           exit 0
 
+      # --- workers.dev subdomain -------------------------------------------
+      # A brand-new Cloudflare account has no workers.dev subdomain, and
+      # `wrangler deploy` refuses to run without one (API error 10063).
+      # Simply loading the Workers landing page used to create it implicitly;
+      # on the current dashboard it does not, so create it explicitly here.
+      #
+      # GET /accounts/{id}/workers/subdomain  -> is there one already?
+      # PUT /accounts/{id}/workers/subdomain  -> create  {"subdomain": "..."}
+      - name: Ensure a workers.dev subdomain exists
+        id: subdomain
+        continue-on-error: true
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set +e
+          API="https://api.cloudflare.com/client/v4"
+          AUTH="Authorization: Bearer $CLOUDFLARE_API_TOKEN"
+
+          echo "Checking for an existing workers.dev subdomain..."
+          curl -s -H "$AUTH" \
+            "$API/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/subdomain" \
+            | tee "$RUNNER_TEMP/subdomain.json"
+
+          name=$(python3 -c "
+          import json,sys
+          try:
+              print(json.load(sys.stdin).get('result') or '')
+          except Exception:
+              print('')
+          " < "$RUNNER_TEMP/subdomain.json")
+
+          if [ -n "$name" ]; then
+            echo "Already provisioned: $name"
+            echo "name=$name" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          echo "No subdomain yet. Creating one..."
+          # Derive the candidate from the account id so it is globally unique
+          # and therefore unlikely to already be taken by someone else.
+          short=$(echo "$CLOUDFLARE_ACCOUNT_ID" | cut -c1-10)
+          : > "$RUNNER_TEMP/subdomain-create.json"
+          for candidate in "kea-$short" "kea-relay-$short" "kea-$short-relay"; do
+            echo "Trying: $candidate"
+            curl -s -X PUT -H "$AUTH" -H "Content-Type: application/json" \
+              -d "{\"subdomain\":\"$candidate\"}" \
+              "$API/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/subdomain" \
+              | tee -a "$RUNNER_TEMP/subdomain-create.json"
+            echo
+            if python3 -c "
+          import json,sys
+          try:
+              sys.exit(0 if json.load(sys.stdin).get('success') else 1)
+          except Exception:
+              sys.exit(1)
+          " < "$RUNNER_TEMP/subdomain-create.json"; then
+              echo "Subdomain created: $candidate"
+              echo "name=$candidate" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+          done
+
+          echo "::warning::Could not create a workers.dev subdomain automatically."
+          echo "name=" >> "$GITHUB_OUTPUT"
+          exit 0
+
       - name: Deploy
         id: deploy
         continue-on-error: true
@@ -134,6 +201,11 @@ jobs:
             echo "## wrangler whoami"
             cat "$RUNNER_TEMP/whoami.txt" 2>/dev/null
             echo
+            echo "## workers.dev subdomain"
+            cat "$RUNNER_TEMP/subdomain.json" 2>/dev/null
+            echo
+            cat "$RUNNER_TEMP/subdomain-create.json" 2>/dev/null
+            echo
             echo "## wrangler deploy --dry-run"
             npx wrangler deploy --dry-run 2>&1
             echo
@@ -159,9 +231,16 @@ jobs:
       - name: Show the endpoint
         if: steps.deploy.outcome == 'success'
         run: |
-          echo "Add this host to KEA - Settings - Relay server:"
-          echo "  wss://kea-relay.<your-subdomain>.workers.dev"
-          echo "The client appends /ws/<groupId> itself."
+          sub="${{ steps.subdomain.outputs.name }}"
+          echo ""
+          echo "=========================================================="
+          echo " Relay deployed."
+          echo ""
+          echo " In KEA -> Settings -> Relay server, enter ONLY the host:"
+          echo "     wss://kea-relay.$sub.workers.dev"
+          echo ""
+          echo " The client appends /ws/<groupId> itself."
+          echo "=========================================================="
 
       - name: Fail if the deploy did not succeed
         if: steps.deploy.outcome == 'failure'
