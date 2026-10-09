@@ -25,8 +25,11 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
 
+    # `contents: write` so the diagnostics step can push the deploy-log branch.
+    # This is a job-level key; `permissions` is NOT valid inside a step, which
+    # GitHub rejects at parse time (zero jobs, immediate failure).
     permissions:
-      contents: read
+      contents: write
 
     steps:
       - uses: actions/checkout@v4
@@ -112,8 +115,6 @@ jobs:
         # Commits whatever we captured to an orphan branch, so a failure is
         # readable without CI log access. Never touches main.
         if: always() && steps.deploy.outcome == 'failure'
-        permissions:
-          contents: write
         working-directory: relay-wrangler
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
