@@ -1,11 +1,13 @@
 name: Deploy KEA relay
 
-# The relay runs on Cloudflare Workers. This deploys it on push to main,
-# which means you never need wrangler installed locally - and you cannot,
-# because Cloudflare's local runtime (workerd) has no Windows-on-ARM build.
+# The relay runs on Cloudflare Workers.
 #
-# If the deploy fails, the diagnostics are committed to the `deploy-log` branch
-# so the failure can be read without needing access to the CI log viewer.
+# This never needs wrangler locally, which matters because Cloudflare's local
+# runtime (workerd) has no Windows-on-ARM build, so wrangler cannot be
+# installed on the machine that maintains this repo at all.
+#
+# Whatever happens, the outcome is written to the `deploy-log` branch so it can
+# be read without access to the CI log viewer.
 
 on:
   push:
@@ -16,7 +18,6 @@ on:
   workflow_dispatch: {}
 
 concurrency:
-  # Never let two deploys race; a newer commit should win.
   group: deploy-relay
   cancel-in-progress: true
 
@@ -25,17 +26,13 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
 
-    # `contents: write` so the diagnostics step can push the deploy-log branch.
-    # This is a job-level key; `permissions` is NOT valid inside a step, which
-    # GitHub rejects at parse time (zero jobs, immediate failure).
+    # Job-level only: `permissions` is not valid inside a step, and GitHub
+    # rejects the entire workflow file at parse time if it appears there.
     permissions:
       contents: write
 
     steps:
       - uses: actions/checkout@v4
-        with:
-          # Needed later to publish the deploy-log branch.
-          fetch-depth: 0
 
       - uses: actions/setup-node@v4
         with:
@@ -59,9 +56,8 @@ jobs:
         working-directory: relay-wrangler
         # `npm install`, not `npm ci`: no lockfile is committed, because a
         # correct one cannot be generated on the Windows-on-ARM machine that
-        # maintains this repo (wrangler's `workerd` has no win-arm64 build, so
-        # the dependency tree cannot be resolved there to verify it). CI
-        # resolves from the registry on x64 Linux.
+        # maintains this repo (workerd has no win-arm64 build, so the tree
+        # cannot be resolved there to verify it).
         run: npm install --no-fund --no-audit
 
       - name: Report toolchain
@@ -74,43 +70,36 @@ jobs:
           } | tee "$RUNNER_TEMP/toolchain.txt"
 
       - name: Typecheck before deploying
-        # Catch a broken Durable Object before it reaches production.
         working-directory: relay-wrangler
         run: npm run typecheck
 
       - name: Verify the Python relay still conforms
-        # The TypeScript relay and the Python reference are two implementations
-        # of one wire protocol. If the protocol drifts, every client breaks -
-        # so this gate runs before every deploy.
+        # Two implementations of one wire protocol. If they drift, every client
+        # breaks - so this gate runs before every deploy.
         working-directory: relay
         run: |
           python -m pip install --quiet -r requirements.txt -r requirements-dev.txt
           python test_protocol.py
 
-      # --- who am I? -------------------------------------------------------
-      # `wrangler whoami` is the single most useful diagnostic: it reports which
-      # token authenticated, as which account, and which permissions it has.
-      # Almost every deploy failure is explained by its output.
       - name: Identify Cloudflare account
-        id: whoami
         continue-on-error: true
         working-directory: relay-wrangler
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: |
-          npx wrangler whoami 2>&1 | tee "$RUNNER_TEMP/whoami.txt"
-          exit 0
+          npx wrangler whoami 2>&1 | tee "$RUNNER_TEMP/whoami.txt" || true
 
-      # --- workers.dev subdomain -------------------------------------------
-      # A brand-new Cloudflare account has no workers.dev subdomain, and
-      # `wrangler deploy` refuses to run without one (API error 10063).
-      # Simply loading the Workers landing page used to create it implicitly;
-      # on the current dashboard it does not, so create it explicitly here.
+      # --- workers.dev subdomain ------------------------------------------
+      # Without one, `wrangler deploy` refuses to make the script routable
+      # (API error 10063). Older Cloudflare dashboards created it implicitly
+      # just by loading the Workers page; the current one does not, so create
+      # it through the API instead.
       #
-      # GET /accounts/{id}/workers/subdomain  -> is there one already?
-      # PUT /accounts/{id}/workers/subdomain  -> create  {"subdomain": "..."}
-      - name: Ensure a workers.dev subdomain exists
+      #   GET /accounts/{id}/workers/subdomain  -> does one exist?
+      #   PUT /accounts/{id}/workers/subdomain  -> create {"subdomain": "..."}
+      # Permission required: Workers Scripts Write.
+      - name: Provision the workers.dev subdomain
         id: subdomain
         continue-on-error: true
         env:
@@ -120,19 +109,17 @@ jobs:
           set +e
           API="https://api.cloudflare.com/client/v4"
           AUTH="Authorization: Bearer $CLOUDFLARE_API_TOKEN"
+          BASE="$API/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/subdomain"
+          REPORT="$RUNNER_TEMP/subdomain.txt"
+          : > "$REPORT"
 
-          echo "Checking for an existing workers.dev subdomain..."
-          curl -s -H "$AUTH" \
-            "$API/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/subdomain" \
-            | tee "$RUNNER_TEMP/subdomain.json"
-
-          name=$(python3 -c "
+          existing=$(curl -s -H "$AUTH" "$BASE")
+          echo "GET  -> $existing" | tee -a "$REPORT"
+          name=$(printf '%s' "$existing" | python3 -c "
           import json,sys
-          try:
-              print(json.load(sys.stdin).get('result') or '')
-          except Exception:
-              print('')
-          " < "$RUNNER_TEMP/subdomain.json")
+          try: print(json.load(sys.stdin).get('result') or '')
+          except Exception: print('')
+          ")
 
           if [ -n "$name" ]; then
             echo "Already provisioned: $name"
@@ -140,32 +127,28 @@ jobs:
             exit 0
           fi
 
-          echo "No subdomain yet. Creating one..."
-          # Derive the candidate from the account id so it is globally unique
-          # and therefore unlikely to already be taken by someone else.
-          short=$(echo "$CLOUDFLARE_ACCOUNT_ID" | cut -c1-10)
-          : > "$RUNNER_TEMP/subdomain-create.json"
+          # Derive candidates from the account id: globally unique, so unlikely
+          # to already be taken.
+          short=$(printf '%s' "$CLOUDFLARE_ACCOUNT_ID" | cut -c1-10)
           for candidate in "kea-$short" "kea-relay-$short" "kea-$short-relay"; do
-            echo "Trying: $candidate"
-            curl -s -X PUT -H "$AUTH" -H "Content-Type: application/json" \
-              -d "{\"subdomain\":\"$candidate\"}" \
-              "$API/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/subdomain" \
-              | tee -a "$RUNNER_TEMP/subdomain-create.json"
-            echo
-            if python3 -c "
+            resp=$(curl -s -X PUT -H "$AUTH" -H "Content-Type: application/json" \
+              -d "{\"subdomain\":\"$candidate\"}" "$BASE")
+            echo "PUT $candidate -> $resp" | tee -a "$REPORT"
+            if printf '%s' "$resp" | python3 -c "
           import json,sys
-          try:
-              sys.exit(0 if json.load(sys.stdin).get('success') else 1)
-          except Exception:
-              sys.exit(1)
-          " < "$RUNNER_TEMP/subdomain-create.json"; then
-              echo "Subdomain created: $candidate"
+          try: sys.exit(0 if json.load(sys.stdin).get('success') else 1)
+          except Exception: sys.exit(1)
+          "; then
+              echo "Created: $candidate"
               echo "name=$candidate" >> "$GITHUB_OUTPUT"
               exit 0
             fi
           done
 
-          echo "::warning::Could not create a workers.dev subdomain automatically."
+          # Do NOT claim success here. Report nothing and let the diagnostics
+          # step show why; an earlier version exited 0 unconditionally, which
+          # made a total failure look green.
+          echo "Could not provision a subdomain."
           echo "name=" >> "$GITHUB_OUTPUT"
           exit 0
 
@@ -173,19 +156,21 @@ jobs:
         id: deploy
         continue-on-error: true
         working-directory: relay-wrangler
-        run: npx wrangler deploy 2>&1 | tee "$RUNNER_TEMP/deploy.log"
+        run: |
+          set +e
+          npx wrangler deploy > "$RUNNER_TEMP/deploy.log" 2>&1
+          code=$?
+          cat "$RUNNER_TEMP/deploy.log"
+          exit $code
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
 
       - name: Publish diagnostics
-        # Commits whatever we captured to an orphan branch, so a failure is
-        # readable without CI log access. Never touches main.
+        # Always, and never fatal: this step exists to make the outcome
+        # readable, so failing here would hide the information it collects.
         if: always()
-        working-directory: relay-wrangler
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        continue-on-error: true
         run: |
           set +e
           OUT="$RUNNER_TEMP/diagnostics.txt"
@@ -197,56 +182,70 @@ jobs:
             echo "deploy    : ${{ steps.deploy.outcome }}"
             echo "subdomain : ${{ steps.subdomain.outputs.name }}"
             echo
+            echo "## subdomain provisioning"
+            cat "$RUNNER_TEMP/subdomain.txt" 2>/dev/null
+            echo
+            echo "## workers.dev subdomain (authoritative, after deploy)"
+            curl -s -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+              "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/subdomain" \
+              2>/dev/null
+            echo
+            echo "## deploy stdout"
+            cat "$RUNNER_TEMP/deploy.log" 2>/dev/null
+            echo
             echo "## toolchain"
             cat "$RUNNER_TEMP/toolchain.txt" 2>/dev/null
             echo
             echo "## wrangler whoami"
             cat "$RUNNER_TEMP/whoami.txt" 2>/dev/null
-            echo
-            echo "## workers.dev subdomain (authoritative, after deploy)"
-            curl -s -H `"Authorization: Bearer $CLOUDFLARE_API_TOKEN`" `
-              `"https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/subdomain`"
-            echo
-            cat "$RUNNER_TEMP/subdomain-create.json" 2>/dev/null
-            echo
-            echo "## wrangler deploy --dry-run"
-            npx wrangler deploy --dry-run 2>&1
-            echo
-            echo "## deploy stdout"
-            cat "$RUNNER_TEMP/deploy.log" 2>/dev/null
           } > "$OUT" 2>&1
 
-          # Redact the token if it ever appears in output.
-          sed -i "s/${CLOUDFLARE_API_TOKEN}/***REDACTED***/g" "$OUT"
+          # Never let the token reach a committed file.
+          if [ -n "$CLOUDFLARE_API_TOKEN" ]; then
+            sed -i "s|${CLOUDFLARE_API_TOKEN}|***REDACTED***|g" "$OUT" 2>/dev/null
+          fi
 
-          git checkout --orphan deploy-log
-          git reset --hard
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          rm -rf .git/refs/heads/deploy-log 2>/dev/null
+          git checkout --orphan deploy-log 2>/dev/null || git checkout -B deploy-log
+          git reset --hard 2>/dev/null
           mkdir -p diag
-          cp "$OUT" "diag/$(date -u +%Y%m%dT%H%M%SZ).txt"
-          cp "$OUT" diag/latest.txt
-          git add diag
-          git -c user.name="github-actions[bot]" \
-              -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
-              commit -q -m "deploy diagnostics $(date -u +%FT%TZ)"
-          git push -f origin deploy-log
+          cp "$OUT" "diag/$(date -u +%Y%m%dT%H%M%SZ).txt" 2>/dev/null
+          cp "$OUT" diag/latest.txt 2>/dev/null
+          git add diag 2>/dev/null
+          git commit -q -m "deploy diagnostics $(date -u +%FT%TZ)" 2>/dev/null
+          git push -f origin deploy-log 2>/dev/null
           echo "Diagnostics published to the deploy-log branch."
+          exit 0
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
 
-      - name: Show the endpoint
-        if: steps.deploy.outcome == 'success'
+      - name: Summarise
+        if: always()
         run: |
           sub="${{ steps.subdomain.outputs.name }}"
           echo ""
-          echo "=========================================================="
-          echo " Relay deployed."
-          echo ""
-          echo " In KEA -> Settings -> Relay server, enter ONLY the host:"
-          echo "     wss://kea-relay.$sub.workers.dev"
-          echo ""
-          echo " The client appends /ws/<groupId> itself."
-          echo "=========================================================="
-
-      - name: Fail if the deploy did not succeed
-        if: steps.deploy.outcome == 'failure'
-        run: |
-          echo "::error::wrangler deploy failed; see the deploy-log branch for diagnostics"
-          exit 1
+          if [ "${{ steps.deploy.outcome }}" = "success" ] && [ -n "$sub" ]; then
+            echo "Relay deployed."
+            echo ""
+            echo "  KEA -> Settings -> Relay server, enter ONLY the host:"
+            echo "    wss://kea-relay.$sub.workers.dev"
+            echo ""
+            echo "The client appends /ws/<groupId> itself."
+          else
+            echo "Deploy outcome : ${{ steps.deploy.outcome }}"
+            echo "Subdomain      : ${sub:-<none>}"
+            echo ""
+            echo "Read the full picture on the deploy-log branch:"
+            echo "  https://github.com/ewxcgl/kea/blob/deploy-log/diag/latest.txt"
+            if [ -z "$sub" ]; then
+              echo ""
+              echo "NO SUBDOMAIN was provisioned, so the script is not routable"
+              echo "even though the upload succeeded. See '## subdomain"
+              echo "provisioning' above for the API's reason."
+            fi
+          fi
+          exit 0
