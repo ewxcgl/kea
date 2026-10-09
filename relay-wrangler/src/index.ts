@@ -62,14 +62,24 @@ export default {
     const stub = env.ROOM.get(id);
 
     // Forward verbatim. The Worker never looks inside a frame.
-    const mutable = new Request(request);
-    (mutable as unknown as { cf: { websocket: unknown } }).cf = {
-      websocket: new WebSocketPair(),
-    } as never;
+    try {
+      const mutable = new Request(request);
+      (mutable as unknown as { cf: { websocket: unknown } }).cf = {
+        websocket: new WebSocketPair(),
+      } as never;
 
-    return stub.fetch(mutable);
+      return await stub.fetch(mutable);
+    } catch (err) {
+      // TEMPORARY diagnostic: surface the exception instead of an opaque 1101.
+      return new Response(`worker-forward: ${describe(err)}`, { status: 500 });
+    }
   },
 };
+
+function describe(err: unknown): string {
+  if (err instanceof Error) return `${err.name}: ${err.message}`;
+  return String(err);
+}
 
 function json(body: unknown): Response {
   return new Response(JSON.stringify(body), {

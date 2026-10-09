@@ -61,23 +61,28 @@ export class Room {
   // ---- lifecycle --------------------------------------------------------
 
   async fetch(request: Request): Promise<Response> {
-    if (request.headers.get("Upgrade") !== "websocket") {
-      return new Response("expected a WebSocket upgrade", { status: 400 });
+    try {
+      if (request.headers.get("Upgrade") !== "websocket") {
+        return new Response("expected a WebSocket upgrade", { status: 400 });
+      }
+
+      const pair = new WebSocketPair();
+      const client = pair[0];
+      const server = pair[1];
+
+      this.state.acceptWebSocket(server);
+      // Tag the socket immediately so the message handler can identify the
+      // sender before any `hello` arrives.
+      server.serializeAttachment({ dev: "", name: "", pk: "" } satisfies Attachment);
+
+      this.state.storage.setAlarm(Date.now() + SWEEP_INTERVAL_MS);
+
+      return new Response(null, { status: 101, webSocket: client });
+    } catch (err) {
+      // TEMPORARY diagnostic: surface the exception instead of an opaque 1101.
+      const msg = err instanceof Error ? `${err.name}: ${err.message}` : String(err);
+      return new Response(`room-fetch: ${msg}`, { status: 500 });
     }
-
-    const pair = new WebSocketPair();
-    const client = pair[0];
-    const server = pair[1];
-
-    this.state.acceptWebSocket(server);
-    // Tag the socket immediately so the message handler can identify the sender
-    // before any `hello` arrives.
-    server.serializeAttachment({ dev: "", name: "", pk: "" } satisfies Attachment);
-
-    this.state.storage.setAlarm(Date.now() + SWEEP_INTERVAL_MS);
-    void this.loadMembers().then(() => this.broadcastRoster());
-
-    return new Response(null, { status: 101, webSocket: client });
   }
 
   // ---- hibernation handlers --------------------------------------------
