@@ -32,6 +32,31 @@ jobs:
         with:
           node-version: "20"
 
+      # Fail early, and say exactly which secret is missing, rather than letting
+      # wrangler die with a generic auth error five steps later.
+      - name: Check Cloudflare credentials are present
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          missing=""
+          [ -z "$CLOUDFLARE_API_TOKEN" ] && missing="$missing CLOUDFLARE_API_TOKEN"
+          [ -z "$CLOUDFLARE_ACCOUNT_ID" ] && missing="$missing CLOUDFLARE_ACCOUNT_ID"
+          if [ -n "$missing" ]; then
+            echo "::error::Missing repository secret(s):$missing"
+            echo ""
+            echo "Add them at:"
+            echo "  https://github.com/ewxcgl/kea/settings/secrets/actions"
+            echo ""
+            echo "  CLOUDFLARE_API_TOKEN  - Cloudflare dashboard -> My Profile ->"
+            echo "                          API Tokens -> Create Token ->"
+            echo "                          'Edit Cloudflare Workers' template"
+            echo "  CLOUDFLARE_ACCOUNT_ID - the 32-character hex id on the right"
+            echo "                          side of the Cloudflare dashboard"
+            exit 1
+          fi
+          echo "Both secrets present."
+
       - name: Install dependencies
         working-directory: relay-wrangler
         # `npm install`, not `npm ci`: no lockfile is committed, because a
@@ -40,6 +65,12 @@ jobs:
         # the dependency tree cannot be resolved there to verify it). CI
         # resolves from the registry on x64 Linux.
         run: npm install --no-fund --no-audit
+
+      - name: Report toolchain
+        working-directory: relay-wrangler
+        run: |
+          echo "node $(node --version)"
+          echo "wrangler $(npx wrangler --version 2>&1 | tail -1)"
 
       - name: Typecheck before deploying
         # Catch a broken Durable Object before it reaches production.
@@ -59,11 +90,6 @@ jobs:
         working-directory: relay-wrangler
         run: npx wrangler deploy
         env:
-          # Repo secret: Settings -> Secrets and variables -> Actions
-          #   CLOUDFLARE_API_TOKEN  (from Cloudflare dashboard -> My Profile ->
-          #                          API Tokens -> Create Token ->
-          #                          "Edit Cloudflare Workers" template)
-          #   CLOUDFLARE_ACCOUNT_ID (right side of the dashboard)
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
 
