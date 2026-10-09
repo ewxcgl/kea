@@ -1,0 +1,9 @@
+# Test-only dependencies.
+#
+#   python -m pip install -r requirements.txt -r requirements-dev.txt
+#   python test_protocol.py
+#
+# `websockets` is the test client; `cryptography` backs the reference
+# implementation that generates the cross-platform vectors in PROTOCOL.md §5.
+websockets>=13,<18
+cryptography>=43

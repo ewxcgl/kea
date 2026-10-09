@@ -1,0 +1,50 @@
+# NOTE: in a .gitignore file a '#' only starts a comment at the BEGINNING of a
+# line. Trailing "# something" becomes part of the pattern and silently matches
+# nothing. Keep every comment on its own line.
+
+# ---- Android / Gradle -----------------------------------------------------
+android/**/build/
+android/build/
+android/.gradle/
+.gradle/
+build/
+.kotlin/
+
+# Machine-specific SDK path. Android Studio regenerates this, so it must not be
+# shared - and it leaks the developer's home directory layout.
+android/local.properties
+
+# Signing material. A repository must never carry a keystore or its passwords.
+android/keystore/
+*.jks
+*.keystore
+keystore.properties
+
+# ---- IDE ------------------------------------------------------------------
+.idea/
+*.iml
+captures/
+
+# ---- Node / Cloudflare ----------------------------------------------------
+relay-wrangler/node_modules/
+relay-wrangler/.wrangler/
+relay-wrangler/dev/
+
+# ---- Python ---------------------------------------------------------------
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+
+# ---- Secrets (belt and braces) --------------------------------------------
+.env
+.env.*
+*.pem
+*.key
+
+# ---- Logs and OS noise ----------------------------------------------------
+*.log
+.DS_Store
+Thumbs.db
+desktop.ini

@@ -1,0 +1,22 @@
+{
+  "name": "kea-relay-wrangler",
+  "version": "1.0.0",
+  "private": true,
+  "description": "KEA relay - content-blind WebSocket fanout on Cloudflare Workers + Durable Objects",
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "tail": "wrangler tail",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20250109.0",
+    "typescript": "^5.7.3",
+    "wrangler": "^3.90.0"
+  },
+  "comments": {
+    "arm64": "wrangler pulls in `workerd`, which has no win-arm64 build. On Windows-on-ARM run `npm install --save-dev typescript @cloudflare/workers-types` instead: you get `npm run typecheck` but cannot `deploy` from that machine.",
+    "test": "The end-to-end conformance suite lives in ../relay (python test_protocol.py) and is the contract this relay must match."
+  }
+}

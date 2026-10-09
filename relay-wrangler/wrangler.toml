@@ -1,0 +1,36 @@
+#:schema node_modules/wrangler/config-schema.json
+name = "kea-relay"
+main = "src/index.ts"
+compatibility_date = "2026-01-15"
+
+# Durable Objects power the WebSocket relay. SQLite is the default backing
+# store on the current runtime; the relay only needs a tiny key/value record
+# per group, so this is more than enough.
+[[durable_objects.bindings]]
+name = "ROOM"
+class_name = "Room"
+
+# One SQLite-backed Durable Object per group. Free tier covers this for a
+# family-sized group by a wide margin.
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["Room"]
+
+[observability]
+enabled = true
+
+# ---------------------------------------------------------------------------
+# Deploy with:  npx wrangler deploy
+#
+# No payment method is required on the Workers free plan.
+#
+# Then set the app's relay to:
+#     wss://kea-relay.<your-subdomain>.workers.dev/ws/<groupId>
+#
+# NOTE: the Android client appends "/ws" to the configured URL today, so enter
+# the full path in Settings -> Relay server, including the group id, OR use the
+# "host only" form below once the client supports the group-in-path form.
+#
+# The Worker serves the group id in the path (rather than a query string) so
+# that the 16-byte key never lands in a query log.
+# ---------------------------------------------------------------------------

@@ -1,0 +1,34 @@
+services:
+  # Cloud Run. Free tier includes a generous monthly request/connection quota and
+  # does NOT sleep on idle WebSockets the way Render's free service does, so it
+  # is the least annoying genuinely-free option. Container must listen on $PORT.
+  - name: kea-relay
+    dockerfile: Dockerfile
+    context: .
+    ports:
+      - 8080
+    environment:
+      - LOG_LEVEL=INFO
+    # Cloud Run bills by request, not connection length, but it also caps
+    # request timeout at 60 min. A long watch session will be cut; the client
+    # reconnect loop handles it transparently.
+    http_timeout: 3600
+    instance_count: 1
+    resources:
+      limits:
+        cpu: "1"
+        memory: 512Mi
+      cpu_idle: true
+
+  # Cloudflare Workers + Durable Objects is the other genuinely-free option and
+  # avoids cold starts entirely, at the cost of rewriting the relay against
+  # Workers primitives. Noted in ../README.md as the scale-up path.
+
+steps:
+  - name: test
+    image: python:3.12-slim
+    workingDir: relay
+    install:
+      - pip install -r requirements.txt -r requirements-dev.txt
+    script:
+      - python test_protocol.py

@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!--
+      AppCompat rather than a Material3 XML theme: Compose owns the Material 3
+      look, and AppCompat is what provides per-app locales below Android 13.
+      A translucent status bar lets the map run edge to edge.
+    -->
+    <style name="Theme.Kea" parent="Theme.AppCompat.DayNight.NoActionBar">
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+        <item name="android:windowBackground">@color/kea_bg</item>
+        <item name="android:windowLightStatusBar">false</item>
+    </style>
+</resources>

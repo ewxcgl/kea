@@ -1,0 +1,34 @@
+# Render — free Web Service
+#
+#   1. New > Web Service > connect this repo > pick the relay/ directory
+#   2. Render reads render.yaml automatically, or set:
+#        Build Command : pip install -r requirements.txt
+#        Start Command : python relay.py
+#   3. After first deploy, Settings > Environment > add RELAY_URL=wss://<name>.onrender.com/ws
+#
+# Free-tier caveats, stated up front:
+#   * Free instances sleep after 15 min idle. A sleeping instance 502s for
+#     ~30s on the next connect. Clients MUST retry with backoff, and a fix
+#     received before the sleep is still shown from cache.
+#   * Free services spin down during periods of low activity, so the very
+#     first watch of the day can take 30-60s. Warn users before they invite
+#     someone, or the demo feels broken.
+#   * One instance only. Do not scale out: state is per-process.
+services:
+  - type: web
+    name: kea-relay
+    runtime: python
+    plan: free
+    region: frankfurt        # keeps relays in the EU
+    rootDir: relay
+    buildCommand: pip install -r requirements.txt
+    startCommand: python relay.py
+    healthCheckPath: /health
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.12"
+      - key: LOG_LEVEL
+        value: INFO
+      # Set this to your deployed host after the first deploy:
+      # - key: RELAY_URL
+      #   value: wss://kea-relay.onrender.com/ws

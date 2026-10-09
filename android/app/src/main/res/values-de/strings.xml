@@ -1,0 +1,181 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <!--
+      German. Notifications are localised too: ShareService and Notifications
+      both resolve text through getString(), so a German device gets German
+      zone alerts without any extra plumbing.
+    -->
+
+    <string name="nav_map">Karte</string>
+    <string name="nav_members">Mitglieder</string>
+    <string name="nav_zones">Zonen</string>
+    <string name="nav_settings">Einstellungen</string>
+    <string name="action_save">Speichern</string>
+    <string name="action_cancel">Abbrechen</string>
+    <string name="action_delete">Löschen</string>
+    <string name="action_close">Schließen</string>
+    <string name="action_retry">Erneut versuchen</string>
+    <string name="action_done">Fertig</string>
+    <string name="action_edit">Bearbeiten</string>
+    <string name="action_add">Hinzufügen</string>
+    <string name="action_share">Teilen</string>
+    <string name="action_copy">Kopieren</string>
+    <string name="action_ok">OK</string>
+    <string name="duration_days">%1$d T.</string>
+    <string name="distance_meters">%1$d m</string>
+    <string name="distance_km">%1$.1f km</string>
+    <string name="loading">Wird geladen…</string>
+
+    <!-- ===== Dauern ===== -->
+    <!-- Werden in Sätzen benutzt und sind daher bewusst keine Pluralformen:
+         "teilt für %1$s" funktioniert mit "15 Min." und "2 Std." gleich gut. -->
+    <string name="duration_minutes">%1$d Min.</string>
+    <string name="duration_hours">%1$d Std.</string>
+    <string name="duration_hours_minutes">%1$d Std. %2$d Min.</string>
+    <string name="duration_just_now">einen Moment</string>
+
+    <!-- ===== Onboarding ===== -->
+    <string name="onboarding_title">Standort teilen, nicht Akkustand</string>
+    <string name="onboarding_body">KEA überträgt deinen Standort nur, wenn wirklich jemand die Karte ansieht. Karte zu, und das Handy wird still.</string>
+    <string name="onboarding_your_name">Dein Name</string>
+    <string name="onboarding_your_name_hint">So sehen dich die anderen</string>
+    <string name="onboarding_create">Gruppe erstellen</string>
+    <string name="onboarding_join">Mit Einladungslink beitreten</string>
+    <string name="onboarding_join_paste">Einladungslink einfügen</string>
+    <string name="onboarding_join_invalid">Das sieht nicht nach einem KEA-Einladungslink aus.</string>
+    <string name="onboarding_continue">Weiter</string>
+
+    <!-- ===== Invite ===== -->
+    <string name="invite_title">Einladungslink</string>
+    <string name="invite_share">Einladung teilen</string>
+    <string name="invite_copied">Einladungslink kopiert</string>
+    <string name="invite_warning_title">Wer diesen Link hat, sieht deinen Standort</string>
+    <string name="invite_warning_body">Der Link enthält den Verschlüsselungsschlüssel der Gruppe. Teile ihn nur mit Vertrauten und wechsel ihn, falls er weitergegeben wurde.</string>
+    <string name="invite_rotate">Schlüssel wechseln</string>
+    <string name="invite_rotated">Neuer Einladungslink erstellt. Alte Links funktionieren für künftige Updates nicht mehr.</string>
+
+    <!-- ===== Map / sharing state ===== -->
+    <string name="sharing_idle">Bereit — sendet nichts</string>
+    <string name="sharing_live">Sendet live</string>
+    <string name="sharing_watched_by">Wird beobachtet von %1$s</string>
+    <string name="sharing_watched_by_n">Wird von %1$d Personen beobachtet</string>
+    <string name="sharing_grace">Noch einen Moment…</string>
+    <string name="acquire_live">Live-Standort anfordern</string>
+    <string name="acquire_live_sent">%1$s um %2$s Live-Standort gebeten</string>
+    <string name="acquire_live_active">%1$s teilt gerade mit dir</string>
+    <string name="acquire_live_expired">Das Zeitfenster für den Live-Standort ist abgelaufen</string>
+    <string name="acquire_live_denied">%1$s möchte gerade nicht teilen</string>
+
+    <!-- ===== Members ===== -->
+    <string name="member_online">Online</string>
+    <string name="member_offline">Offline</string>
+    <string name="member_watching">Schaut auf die Karte</string>
+    <string name="member_not_watching">Schaut nicht zu</string>
+    <string name="member_stale">Zuletzt gesehen vor %1$s</string>
+    <string name="member_fresh">Gerade eben</string>
+    <string name="member_you">Du</string>
+    <string name="member_distance">%1$s entfernt</string>
+    <string name="member_accuracy">±%1$d m</string>
+    <string name="member_battery">%1$d %% Akku</string>
+    <string name="member_speed">%1$s km/h</string>
+    <string name="member_unknown">Standort noch nicht geteilt</string>
+    <string name="members_title">%1$d Mitglieder</string>
+    <string name="member_leave">Gruppe verlassen</string>
+    <string name="member_leave_confirm_title">Diese Gruppe verlassen?</string>
+    <string name="member_leave_confirm_body">Du teilst deinen Standort nicht mehr. Für eine erneute Teilnahme brauchst du einen neuen Einladungslink.</string>
+    <string name="member_you_left">Du hast die Gruppe verlassen</string>
+
+    <!-- ===== Geofences ===== -->
+    <string name="zone_title">Zonen</string>
+    <string name="zone_add">Zone hinzufügen</string>
+    <string name="zone_new">Neue Zone</string>
+    <string name="zone_name">Zonenname</string>
+    <string name="zone_name_hint">Zuhause, Schule, Oma…</string>
+    <string name="zone_radius">Radius</string>
+    <string name="zone_radius_value">%1$d m</string>
+    <string name="zone_shape_circle">Kreis</string>
+    <string name="zone_shape_polygon">Fläche</string>
+    <string name="zone_notify">Benachrichtigungen</string>
+    <string name="zone_notify_enter">Wenn jemand die Zone betritt</string>
+    <string name="zone_notify_exit">Wenn jemand die Zone verlässt</string>
+    <string name="zone_notify_self">Wenn ich sie selbst betrete oder verlasse</string>
+    <string name="zone_notify_others">Wenn andere sie betreten oder verlassen</string>
+    <string name="zone_saved">Zone gespeichert</string>
+    <string name="zone_deleted">Zone gelöscht</string>
+    <string name="zone_tap_map_hint">Tippe auf die Karte, um die Zone zu setzen</string>
+    <string name="zone_inside_count">%1$d darin</string>
+
+    <!-- ===== Geofence notifications ===== -->
+    <string name="notif_channel_geofence">Zonen-Meldungen</string>
+    <string name="notif_channel_geofence_desc">Meldungen beim Betreten oder Verlassen einer Zone</string>
+    <string name="notif_channel_sharing">Teilen-Status</string>
+    <string name="notif_channel_sharing_desc">Zeigt an, ob dein Standort gesendet wird</string>
+    <string name="notif_channel_invite">Anfragen</string>
+    <string name="notif_channel_invite_desc">Jemand hat nach deinem Standort gefragt</string>
+
+    <string name="notif_fence_self_enter">Du bist %1$s betreten</string>
+    <string name="notif_fence_self_exit">Du hast %1$s verlassen</string>
+    <string name="notif_fence_other_enter">%1$s hat %2$s betreten</string>
+    <string name="notif_fence_other_exit">%1$s hat %2$s verlassen</string>
+    <string name="notif_fence_members_inside">%1$s ist in %2$s</string>
+
+    <!-- ===== Service / status notifications ===== -->
+    <string name="notif_service_idle_title">KEA ist bereit</string>
+    <string name="notif_service_idle_body">Sendet deinen Standort nicht</string>
+    <string name="notif_service_live_title">Standort wird geteilt</string>
+    <string name="notif_service_live_body">%1$s</string>
+    <string name="notif_service_grace_title">Wird beendet</string>
+    <string name="notif_service_grace_body">Gleich ist Schluss</string>
+
+    <string name="notif_pull_title">%1$s möchte deinen Standort</string>
+    <string name="notif_pull_body">%1$s Live-Standort angefordert</string>
+    <string name="notif_pull_action_grant">Teilen</string>
+    <string name="notif_pull_action_deny">Nein danke</string>
+
+    <!-- ===== Permissions ===== -->
+    <string name="perm_needed_title">KEA braucht Standortzugriff</string>
+    <string name="perm_needed_body">KEA nutzt deinen Standort nur, wenn jemand die Karte ansieht. Auf keinem Server wird etwas gespeichert.</string>
+    <string name="perm_grant">Zugriff erlauben</string>
+    <string name="perm_open_settings">Einstellungen öffnen</string>
+    <string name="perm_background_title">Hintergrundzugriff erlauben</string>
+    <string name="perm_background_body">Wähle „Immer erlauben“, damit KEA merkt, dass du angekommen bist, auch wenn die App zu ist.</string>
+    <string name="perm_notifications_title">Benachrichtigungen erlauben</string>
+    <string name="perm_notifications_body">KEA braucht Benachrichtigungen, um dir zu sagen, wenn jemand eine Zone betritt.</string>
+
+    <!-- ===== Settings ===== -->
+    <string name="settings_title">Einstellungen</string>
+    <string name="settings_display_name">Anzeigename</string>
+    <string name="settings_language">Sprache</string>
+    <string name="settings_language_system">Systemsprache</string>
+    <string name="settings_language_en">English</string>
+    <string name="settings_language_de">Deutsch</string>
+    <string name="settings_relay">Relay-Server</string>
+    <string name="settings_relay_hint">wss://…/ws</string>
+    <string name="settings_relay_note">Dein Standort ist Ende-zu-Ende verschlüsselt. Das Relay leitet nur unlesbare Daten weiter.</string>
+    <string name="settings_map_style">Kartenstil</string>
+    <string name="settings_map_tiles">Kartendaten</string>
+    <string name="settings_map_tiles_note">© OpenStreetMap-Mitwirkende, Kacheln von OpenFreeMap</string>
+    <string name="settings_relay_saved">Relay gespeichert</string>
+
+    <!-- ===== Connection ===== -->
+    <string name="conn_connected">Verbunden</string>
+    <string name="conn_connecting">Verbindung wird hergestellt…</string>
+    <string name="conn_offline">Offline</string>
+    <string name="conn_retry_in">Neuer Versuch in %1$s…</string>
+    <string name="conn_wake_note">Das kostenlose Relay schläft eventuell. Neuer Versuch…</string>
+
+    <!-- ===== Errors ===== -->
+    <string name="error_generic">Etwas ist schiefgelaufen</string>
+    <string name="error_no_location">Noch kein Standort</string>
+    <string name="error_location_disabled">Standort ist ausgeschaltet</string>
+    <string name="error_bad_frame">Ein Mitglied hat Daten gesendet, die nicht überprüfbar waren. Sie wurden verworfen.</string>
+    <string name="error_key_mismatch">Dein Verschlüsselungsschlüssel passt nicht zu dieser Gruppe</string>
+
+    <!-- ===== Accessibility ===== -->
+    <string name="a11y_map">Karte mit Gruppenmitgliedern und Zonen</string>
+    <string name="a11y_member_marker">%1$s</string>
+    <string name="a11y_zone_marker">Zone: %1$s</string>
+    <string name="a11y_recenter">Karte auf alle zentrieren</string>
+    <string name="a11y_my_location">Auf meinen Standort zentrieren</string>
+</resources>

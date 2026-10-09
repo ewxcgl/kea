@@ -1,0 +1,7 @@
+# Runtime dependencies for the relay server itself.
+#
+# Deliberately one package. The relay routes opaque bytes and never decrypts,
+# so it needs no cryptography at all — `websockets` and `cryptography` are used
+# only by the test client and the reference vectors. Dropping them takes the
+# container from ~12 MB of dependencies down to ~3 MB.
+aiohttp>=3.10,<4

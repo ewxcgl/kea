@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- KEA identity: deep teal on near-black, the colour of a night watch. -->
+    <color name="kea_bg">#FF0B1412</color>
+    <color name="ic_launcher_background">#FF0B1412</color>
+
+    <color name="ic_watch">#FF5EEAD4</color>
+    <color name="ic_watch_dim">#FF2DD4BF</color>
+    <color name="ic_alert">#FFFBBF24</color>
+</resources>

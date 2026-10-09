@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Status-bar icon. Android masks notification icons to a single colour, so this
+  is a solid silhouette on transparent — the same kea mark as the launcher icon,
+  simplified for a 24dp silhouette budget.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24"
+    android:tint="#FFFFFFFF">
+
+    <!-- wings -->
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M12,6.2 C10.6,4.4 8.2,3.2 5.4,2.9 C6.9,4.0 8.1,5.0 9.2,6.0 C7.6,5.2 5.9,4.8 4.0,4.7 C5.6,5.9 6.9,7.0 7.9,8.1 C6.5,7.6 5.2,7.3 3.9,7.3 C6.0,8.7 7.9,9.9 10.1,10.6 L12,13.6 Z" />
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M12,6.2 C13.4,4.4 15.8,3.2 18.6,2.9 C17.1,4.0 15.9,5.0 14.8,6.0 C16.4,5.2 18.1,4.8 20.0,4.7 C18.4,5.9 17.1,7.0 16.1,8.1 C17.5,7.6 18.8,7.3 20.1,7.3 C18.0,8.7 16.1,9.9 13.9,10.6 L12,13.6 Z" />
+
+    <!-- body and tail -->
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M12,10.4 L13.5,13.6 L12.9,18.2 L14.1,20.6 L12.7,20.0 L11.9,22.4 L11.1,20.0 L9.9,20.6 L10.5,18.2 L10.5,13.6 Z" />
+</vector>

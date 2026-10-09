@@ -1,0 +1,46 @@
+# Fly.io
+#
+# Fly removed its blanket free allowance for new organisations, so this is
+# "cheapest viable" rather than "free". If you want genuinely $0, use the
+# Oracle Cloud Always Free VM (recipe in ../README.md) or Cloud Run.
+#
+#   fly launch --no-deploy --copy-config
+#   fly deploy
+#   fly secrets set RELAY_URL=wss://<app>.fly.dev/ws
+#   fly scale count 1        # exactly one instance: state is per-process
+#
+# If you ever need >1 instance, first move the group registry to Redis pub/sub
+# and add sticky routing. Until then, 2 replicas will silently split the groups.
+
+app = "kea-relay"
+primary_region = "fra"
+
+[build]
+  dockerfile = "Dockerfile"
+
+[env]
+  LOG_LEVEL = "INFO"
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  # WebSockets are long-lived. The default 60s idle timeout would cut a quiet
+  # watch-gate connection, so keep the window generous and let the relay's own
+  # heartbeat carry the connection.
+  min_connected_time = 10s
+
+  [http_service.concurrency]
+    type = "connections"
+    soft_limit = 200
+    hard_limit = 250
+
+[[http_service.checks]]
+  interval = "30s"
+  timeout = "3s"
+  grace_period = "10s"
+  method = "GET"
+  path = "/health"
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "256mb"
