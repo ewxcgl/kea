@@ -1,20 +1,31 @@
 #:schema node_modules/wrangler/config-schema.json
 name = "kea-relay"
 main = "src/index.ts"
+
 # Pinned to a date every wrangler 3.x release accepts. A date newer than the
 # installed wrangler supports is rejected outright, and the version floats, so
 # this stays conservative on purpose.
 compatibility_date = "2024-11-20"
 
-# Durable Objects power the WebSocket relay. SQLite is the default backing
-# store on the current runtime; the relay only needs a tiny key/value record
-# per group, so this is more than enough.
+# Deploy to the workers.dev subdomain.
+#
+# NOTE: this MUST sit above any [table] header. In TOML a key belongs to the
+# table above it, so putting this under [observability] silently makes it an
+# "unexpected field" and the subdomain setting is ignored.
+#
+# A brand-new Cloudflare account has no workers.dev subdomain yet. Opening the
+# Workers landing page in the dashboard once creates it; without that, deploy
+# fails with API error 10063.
+workers_dev = true
+
+# Durable Objects power the WebSocket relay. One object per group.
+#
+# SQLite is the backing store; the relay keeps only a tiny roster record per
+# group, so this is far more than it needs.
 [[durable_objects.bindings]]
 name = "ROOM"
 class_name = "Room"
 
-# One SQLite-backed Durable Object per group. Free tier covers this for a
-# family-sized group by a wide margin.
 [[migrations]]
 tag = "v1"
 new_sqlite_classes = ["Room"]
@@ -22,23 +33,18 @@ new_sqlite_classes = ["Room"]
 [observability]
 enabled = true
 
-# Deploy to the workers.dev subdomain. Set explicitly: on a freshly created
-# account the subdomain may not exist yet, and leaving this implicit makes
-# wrangler fail with an opaque message instead of saying so.
-workers_dev = true
-
 # ---------------------------------------------------------------------------
-# Deploy with:  npx wrangler deploy
+# Deploy with:  npx wrangler deploy      (or let GitHub Actions do it)
 #
 # No payment method is required on the Workers free plan.
 #
-# Then set the app's relay to:
-#     wss://kea-relay.<your-subdomain>.workers.dev/ws/<groupId>
+# Then in the app, Settings -> Relay server, enter ONLY the host:
+#     wss://kea-relay.<your-subdomain>.workers.dev
 #
-# NOTE: the Android client appends "/ws" to the configured URL today, so enter
-# the full path in Settings -> Relay server, including the group id, OR use the
-# "host only" form below once the client supports the group-in-path form.
+# The client builds the rest of the endpoint itself: it appends
+# /ws/<base64url groupId>, so the group id never has to be configured by hand.
 #
-# The Worker serves the group id in the path (rather than a query string) so
-# that the 16-byte key never lands in a query log.
+# The group id travels in the path rather than the query string so the 16-byte
+# key never lands in a query log. relay.py accepts the same shape and ignores
+# the extra segment, so one URL works against either backend.
 # ---------------------------------------------------------------------------
