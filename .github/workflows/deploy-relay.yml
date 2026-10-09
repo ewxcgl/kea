@@ -34,7 +34,12 @@ jobs:
 
       - name: Install dependencies
         working-directory: relay-wrangler
-        run: npm ci --no-fund --no-audit
+        # `npm install`, not `npm ci`: no lockfile is committed, because a
+        # correct one cannot be generated on the Windows-on-ARM machine that
+        # maintains this repo (wrangler's `workerd` has no win-arm64 build, so
+        # the dependency tree cannot be resolved there to verify it). CI
+        # resolves from the registry on x64 Linux.
+        run: npm install --no-fund --no-audit
 
       - name: Typecheck before deploying
         # Catch a broken Durable Object before it reaches production.
