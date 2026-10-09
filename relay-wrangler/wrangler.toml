@@ -22,6 +22,11 @@ new_sqlite_classes = ["Room"]
 [observability]
 enabled = true
 
+# Deploy to the workers.dev subdomain. Set explicitly: on a freshly created
+# account the subdomain may not exist yet, and leaving this implicit makes
+# wrangler fail with an opaque message instead of saying so.
+workers_dev = true
+
 # ---------------------------------------------------------------------------
 # Deploy with:  npx wrangler deploy
 #

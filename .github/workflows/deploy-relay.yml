@@ -3,6 +3,9 @@ name: Deploy KEA relay
 # The relay runs on Cloudflare Workers. This deploys it on push to main,
 # which means you never need wrangler installed locally - and you cannot,
 # because Cloudflare's local runtime (workerd) has no Windows-on-ARM build.
+#
+# If the deploy fails, the diagnostics are committed to the `deploy-log` branch
+# so the failure can be read without needing access to the CI log viewer.
 
 on:
   push:
@@ -27,13 +30,14 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          # Needed later to publish the deploy-log branch.
+          fetch-depth: 0
 
       - uses: actions/setup-node@v4
         with:
           node-version: "20"
 
-      # Fail early, and say exactly which secret is missing, rather than letting
-      # wrangler die with a generic auth error five steps later.
       - name: Check Cloudflare credentials are present
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -44,15 +48,6 @@ jobs:
           [ -z "$CLOUDFLARE_ACCOUNT_ID" ] && missing="$missing CLOUDFLARE_ACCOUNT_ID"
           if [ -n "$missing" ]; then
             echo "::error::Missing repository secret(s):$missing"
-            echo ""
-            echo "Add them at:"
-            echo "  https://github.com/ewxcgl/kea/settings/secrets/actions"
-            echo ""
-            echo "  CLOUDFLARE_API_TOKEN  - Cloudflare dashboard -> My Profile ->"
-            echo "                          API Tokens -> Create Token ->"
-            echo "                          'Edit Cloudflare Workers' template"
-            echo "  CLOUDFLARE_ACCOUNT_ID - the 32-character hex id on the right"
-            echo "                          side of the Cloudflare dashboard"
             exit 1
           fi
           echo "Both secrets present."
@@ -69,8 +64,11 @@ jobs:
       - name: Report toolchain
         working-directory: relay-wrangler
         run: |
-          echo "node $(node --version)"
-          echo "wrangler $(npx wrangler --version 2>&1 | tail -1)"
+          {
+            echo "node $(node --version)"
+            echo "npm $(npm --version)"
+            echo "wrangler $(npx wrangler --version 2>&1 | tail -1)"
+          } | tee "$RUNNER_TEMP/toolchain.txt"
 
       - name: Typecheck before deploying
         # Catch a broken Durable Object before it reaches production.
@@ -86,15 +84,86 @@ jobs:
           python -m pip install --quiet -r requirements.txt -r requirements-dev.txt
           python test_protocol.py
 
+      # --- who am I? -------------------------------------------------------
+      # `wrangler whoami` is the single most useful diagnostic: it reports which
+      # token authenticated, as which account, and which permissions it has.
+      # Almost every deploy failure is explained by its output.
+      - name: Identify Cloudflare account
+        id: whoami
+        continue-on-error: true
+        working-directory: relay-wrangler
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          npx wrangler whoami 2>&1 | tee "$RUNNER_TEMP/whoami.txt"
+          exit 0
+
       - name: Deploy
+        id: deploy
+        continue-on-error: true
         working-directory: relay-wrangler
         run: npx wrangler deploy
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
 
+      - name: Publish diagnostics
+        # Commits whatever we captured to an orphan branch, so a failure is
+        # readable without CI log access. Never touches main.
+        if: always() && steps.deploy.outcome == 'failure'
+        permissions:
+          contents: write
+        working-directory: relay-wrangler
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set +e
+          OUT="$RUNNER_TEMP/diagnostics.txt"
+          {
+            echo "# KEA relay deploy diagnostics"
+            echo
+            echo "commit : ${{ github.sha }}"
+            echo "when   : $(date -u +%FT%TZ)"
+            echo
+            echo "## toolchain"
+            cat "$RUNNER_TEMP/toolchain.txt" 2>/dev/null
+            echo
+            echo "## wrangler whoami"
+            cat "$RUNNER_TEMP/whoami.txt" 2>/dev/null
+            echo
+            echo "## wrangler deploy --dry-run"
+            npx wrangler deploy --dry-run 2>&1
+            echo
+            echo "## wrangler deploy (full output)"
+            npx wrangler deploy 2>&1
+          } > "$OUT" 2>&1
+
+          # Redact the token if it ever appears in output.
+          sed -i "s/${CLOUDFLARE_API_TOKEN}/***REDACTED***/g" "$OUT"
+
+          git checkout --orphan deploy-log
+          git reset --hard
+          mkdir -p diag
+          cp "$OUT" "diag/$(date -u +%Y%m%dT%H%M%SZ).txt"
+          cp "$OUT" diag/latest.txt
+          git add diag
+          git -c user.name="github-actions[bot]" \
+              -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
+              commit -q -m "deploy diagnostics $(date -u +%FT%TZ)"
+          git push -f origin deploy-log
+          echo "Diagnostics published to the deploy-log branch."
+
       - name: Show the endpoint
+        if: steps.deploy.outcome == 'success'
         run: |
           echo "Add this host to KEA - Settings - Relay server:"
           echo "  wss://kea-relay.<your-subdomain>.workers.dev"
           echo "The client appends /ws/<groupId> itself."
+
+      - name: Fail if the deploy did not succeed
+        if: steps.deploy.outcome == 'failure'
+        run: |
+          echo "::error::wrangler deploy failed; see the deploy-log branch for diagnostics"
+          exit 1
