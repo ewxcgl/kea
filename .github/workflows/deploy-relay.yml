@@ -173,7 +173,7 @@ jobs:
         id: deploy
         continue-on-error: true
         working-directory: relay-wrangler
-        run: npx wrangler deploy
+        run: npx wrangler deploy 2>&1 | tee "$RUNNER_TEMP/deploy.log"
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
@@ -181,7 +181,7 @@ jobs:
       - name: Publish diagnostics
         # Commits whatever we captured to an orphan branch, so a failure is
         # readable without CI log access. Never touches main.
-        if: always() && steps.deploy.outcome == 'failure'
+        if: always()
         working-directory: relay-wrangler
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -192,8 +192,10 @@ jobs:
           {
             echo "# KEA relay deploy diagnostics"
             echo
-            echo "commit : ${{ github.sha }}"
-            echo "when   : $(date -u +%FT%TZ)"
+            echo "commit    : ${{ github.sha }}"
+            echo "when      : $(date -u +%FT%TZ)"
+            echo "deploy    : ${{ steps.deploy.outcome }}"
+            echo "subdomain : ${{ steps.subdomain.outputs.name }}"
             echo
             echo "## toolchain"
             cat "$RUNNER_TEMP/toolchain.txt" 2>/dev/null
@@ -201,16 +203,17 @@ jobs:
             echo "## wrangler whoami"
             cat "$RUNNER_TEMP/whoami.txt" 2>/dev/null
             echo
-            echo "## workers.dev subdomain"
-            cat "$RUNNER_TEMP/subdomain.json" 2>/dev/null
+            echo "## workers.dev subdomain (authoritative, after deploy)"
+            curl -s -H `"Authorization: Bearer $CLOUDFLARE_API_TOKEN`" `
+              `"https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/subdomain`"
             echo
             cat "$RUNNER_TEMP/subdomain-create.json" 2>/dev/null
             echo
             echo "## wrangler deploy --dry-run"
             npx wrangler deploy --dry-run 2>&1
             echo
-            echo "## wrangler deploy (full output)"
-            npx wrangler deploy 2>&1
+            echo "## deploy stdout"
+            cat "$RUNNER_TEMP/deploy.log" 2>/dev/null
           } > "$OUT" 2>&1
 
           # Redact the token if it ever appears in output.
